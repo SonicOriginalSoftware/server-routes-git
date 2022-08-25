@@ -2,7 +2,10 @@ module routes/git
 
 go 1.19
 
-require github.com/go-git/go-git/v5 v5.4.2
+require (
+	server v0.0.0
+	github.com/go-git/go-git/v5 v5.4.2
+)
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20210428141323-04723f9f07d7 // indirect
