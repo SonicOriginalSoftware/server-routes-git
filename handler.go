@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 
@@ -27,15 +26,14 @@ const uploadService = "git-upload-pack"
 
 // Handler handles Git requests
 type Handler struct {
-	outlog *log.Logger
-	errlog *log.Logger
+	logger *logging.Logger
 	server transport.Transport
 }
 
 func (handler *Handler) handleError(writer http.ResponseWriter, errCode int, err error) {
 	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
-	handler.errlog.Printf("%s", err)
+	handler.logger.Error("%s", err)
 	http.Error(writer, err.Error(), errCode)
 }
 
@@ -161,8 +159,7 @@ func (handler *Handler) Address() string {
 // New returns a new Handler
 func New() *Handler {
 	return &Handler{
-		outlog: logging.NewLog(prefix),
-		errlog: logging.NewError(prefix),
+		logger: logging.New(prefix),
 		server: go_git.DefaultServer,
 	}
 }
