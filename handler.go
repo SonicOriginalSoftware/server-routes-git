@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"server/logging"
+	"git.nathanblair.rocks/server/logging"
 
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"

@@ -1,9 +1,9 @@
-module routes/git
+module git.nathanblair.rocks/routes/git
 
 go 1.19
 
 require (
-	server v0.0.0
+	git.nathanblair.rocks/server v0.0.0
 	github.com/go-git/go-git/v5 v5.4.2
 )
 
