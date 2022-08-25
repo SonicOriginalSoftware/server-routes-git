@@ -9,9 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"server/env"
 	"server/logging"
-	"server/net/local"
 
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
@@ -149,11 +147,6 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 // Prefix is the subdomain prefix
 func (handler *Handler) Prefix() string {
 	return prefix
-}
-
-// Address returns the address the Handler will service
-func (handler *Handler) Address() string {
-	return env.Address(prefix, fmt.Sprintf("%v.%v", prefix, local.Path("")))
 }
 
 // New returns a new Handler
