@@ -17,7 +17,9 @@ import (
 	go_git "github.com/go-git/go-git/v5/plumbing/transport/server"
 )
 
-const prefix = "git"
+// Prefix is the name used to identify the service
+const Prefix = "git"
+
 const infoRefsService = "refs"
 const receiveService = "git-receive-pack"
 const uploadService = "git-upload-pack"
@@ -144,15 +146,10 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	}
 }
 
-// Prefix is the subdomain prefix
-func (handler *Handler) Prefix() string {
-	return prefix
-}
-
 // New returns a new Handler
 func New() *Handler {
 	return &Handler{
-		logger: logging.New(prefix),
+		logger: logging.New(Prefix),
 		server: go_git.DefaultServer,
 	}
 }
