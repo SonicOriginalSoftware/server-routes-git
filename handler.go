@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	"git.nathanblair.rocks/server/handlers"
 	"git.nathanblair.rocks/server/logging"
 
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
@@ -17,12 +18,14 @@ import (
 	go_git "github.com/go-git/go-git/v5/plumbing/transport/server"
 )
 
-// Prefix is the name used to identify the service
-const Prefix = "git"
+const (
+	// Name is the name used to identify the service
+	Name = "git"
 
-const infoRefsService = "refs"
-const receiveService = "git-receive-pack"
-const uploadService = "git-upload-pack"
+	infoRefsService = "refs"
+	receiveService  = "git-receive-pack"
+	uploadService   = "git-upload-pack"
+)
 
 // Handler handles Git requests
 type Handler struct {
@@ -147,9 +150,10 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 // New returns a new Handler
-func New() *Handler {
-	return &Handler{
-		logger: logging.New(Prefix),
-		server: go_git.DefaultServer,
-	}
+func New() (handler *Handler) {
+	logger := logging.New(Name)
+	handler = &Handler{logger: logger, server: go_git.DefaultServer}
+	handlers.Register(Name, handler, logger)
+
+	return
 }
