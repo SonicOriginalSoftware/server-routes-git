@@ -1,4 +1,4 @@
-package git_test
+package server_test
 
 import (
 	"context"
@@ -14,33 +14,18 @@ import (
 	"github.com/go-git/go-git/v5/config"
 
 	"git.nathanblair.rocks/routes/git"
-	"git.nathanblair.rocks/routes/git/internal/repo"
+	"git.nathanblair.rocks/routes/git/internal"
+	"git.nathanblair.rocks/routes/git/server"
 	lib "git.nathanblair.rocks/server"
 )
 
 const (
 	port       = "4430"
-	configPath = "config"
 	localHost  = "localhost"
 	remoteName = "go-git-test"
 )
 
 var certs []tls.Certificate
-
-func TestCreateRepo(t *testing.T) {
-	var (
-		err      error
-		memoryFS billy.Filesystem
-	)
-
-	if memoryFS, _, err = repo.Create(memfs.New()); err != nil {
-		t.Fatalf("Could not initialize repository: %v", err)
-	}
-
-	if _, err := memoryFS.Stat(configPath); err != nil {
-		t.Fatalf("Repository initialized incorrectly: %v", err)
-	}
-}
 
 func TestPush(t *testing.T) {
 	var (
@@ -49,7 +34,7 @@ func TestPush(t *testing.T) {
 		repository *go_git.Repository
 	)
 
-	if memoryFS, repository, err = repo.Create(memfs.New()); err != nil {
+	if memoryFS, repository, err = internal.CreateRepo(memfs.New()); err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 
@@ -71,7 +56,7 @@ func TestPush(t *testing.T) {
 		RefSpecs:   []config.RefSpec{},
 	}
 
-	_ = git.New(memoryFS)
+	_ = server.New(memoryFS)
 
 	ctx, cancelFunction := context.WithCancel(context.Background())
 

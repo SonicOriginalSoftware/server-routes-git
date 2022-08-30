@@ -1,6 +1,6 @@
 //revive:disable:package-comments
 
-package git
+package server
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	"github.com/go-git/go-git/v5/plumbing/transport/server"
+	go_git_server "github.com/go-git/go-git/v5/plumbing/transport/server"
 )
 
 const (
@@ -34,14 +34,7 @@ type Handler struct {
 	server transport.Transport
 }
 
-func (handler *Handler) handleError(writer http.ResponseWriter, errCode int, err error) {
-	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
-
-	handler.logger.Error("%s", err)
-	http.Error(writer, err.Error(), errCode)
-}
-
-func (handler *Handler) uploadPack(
+func uploadPack(
 	context context.Context,
 	session transport.Session,
 	body io.ReadCloser,
@@ -66,7 +59,7 @@ func (handler *Handler) uploadPack(
 	return uploadResponse.Encode(writer)
 }
 
-func (handler *Handler) receivePack(
+func receivePack(
 	context context.Context,
 	session transport.Session,
 	body io.ReadCloser,
@@ -89,18 +82,22 @@ func (handler *Handler) receivePack(
 	return reportStatus.Encode(writer)
 }
 
-func (handler *Handler) handleGitRequest(writer http.ResponseWriter, request *http.Request) {
+func handleRequest(
+	writer http.ResponseWriter,
+	request *http.Request,
+	server transport.Transport,
+) (statusCode int, err error) {
 	requestPath := strings.TrimPrefix(request.URL.Path, fmt.Sprintf("/%v/", Name))
-	writer.Header().Add("Cache-Control", "no-cache")
-
-	err := fmt.Errorf("Invalid request: %v", requestPath)
+	writer.Header().Set("Cache-Control", "no-cache")
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	pathParts := strings.Split(requestPath, "/")
 	service := pathParts[len(pathParts)-1]
 	isInfoRefsRequest := service == infoRefsService
 
 	if service != receiveService && service != uploadService && !isInfoRefsRequest {
-		handler.handleError(writer, http.StatusForbidden, err)
+		err = fmt.Errorf("Invalid request: %v", requestPath)
+		statusCode = http.StatusForbidden
 		return
 	}
 
@@ -121,7 +118,7 @@ func (handler *Handler) handleGitRequest(writer http.ResponseWriter, request *ht
 	endpoint := fmt.Sprintf("%v://%v/%v", proto, request.Host, repoPath)
 	transportEndpoint, err := transport.NewEndpoint(endpoint)
 	if err != nil {
-		handler.handleError(writer, http.StatusBadRequest, err)
+		statusCode = http.StatusBadRequest
 		return
 	}
 
@@ -129,14 +126,14 @@ func (handler *Handler) handleGitRequest(writer http.ResponseWriter, request *ht
 
 	var session transport.Session
 	if service == receiveService {
-		session, err = handler.server.NewReceivePackSession(transportEndpoint, nil)
+		session, err = server.NewReceivePackSession(transportEndpoint, nil)
 		if !isInfoRefsRequest && err == nil {
-			err = handler.receivePack(request.Context(), session, request.Body, writer)
+			err = receivePack(request.Context(), session, request.Body, writer)
 		}
 	} else if service == uploadService {
-		session, err = handler.server.NewUploadPackSession(transportEndpoint, nil)
+		session, err = server.NewUploadPackSession(transportEndpoint, nil)
 		if !isInfoRefsRequest && err == nil {
-			err = handler.uploadPack(request.Context(), session, request.Body, writer)
+			err = uploadPack(request.Context(), session, request.Body, writer)
 		}
 	}
 
@@ -148,24 +145,25 @@ func (handler *Handler) handleGitRequest(writer http.ResponseWriter, request *ht
 		}
 	}
 
-	if err != nil {
-		handler.handleError(writer, http.StatusBadRequest, err)
-	}
+	return
 }
 
-// ServeHTTP fulfills the http.Handler contract for Handler
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.URL.Path)
 
-	handler.handleGitRequest(writer, request)
+	if statusCode, err := handleRequest(writer, request, handler.server); err != nil {
+		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		handler.logger.Error("%s", err)
+		http.Error(writer, err.Error(), statusCode)
+	}
 }
 
 // New returns a new Handler
 func New(fsys billy.Filesystem) (handler *Handler) {
-	loader := server.NewFilesystemLoader(fsys)
+	loader := go_git_server.NewFilesystemLoader(fsys)
 
 	logger := logging.New(Name)
-	handler = &Handler{logger, server.NewServer(loader)}
+	handler = &Handler{logger, go_git_server.NewServer(loader)}
 	handlers.Register(Name, handler, logger)
 
 	return

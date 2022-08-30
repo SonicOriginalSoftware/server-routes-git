@@ -1,6 +1,6 @@
 //revive:disable:package-comments
 
-package repo
+package internal
 
 import (
 	billy "github.com/go-git/go-billy/v5"
@@ -9,8 +9,8 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
-// Create a repo in a given filesystem
-func Create(fsys billy.Filesystem) (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
+// CreateRepo a repo in a given filesystem
+func CreateRepo(fsys billy.Filesystem) (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
 	dotGit := dotgit.New(fsys)
 	if err = dotGit.Initialize(); err != nil {
 		return
