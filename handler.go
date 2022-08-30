@@ -12,10 +12,15 @@ import (
 	"git.nathanblair.rocks/server/handlers"
 	"git.nathanblair.rocks/server/logging"
 
+	billy "github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/memfs"
+	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v5/plumbing/transport"
-	go_git "github.com/go-git/go-git/v5/plumbing/transport/server"
+	"github.com/go-git/go-git/v5/plumbing/transport/server"
+	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 const (
@@ -88,14 +93,31 @@ func (handler *Handler) receivePack(
 	return reportStatus.Encode(writer)
 }
 
+func createRepo() (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
+	dotGit := dotgit.New(memfs.New())
+	if err = dotGit.Initialize(); err != nil {
+		return
+	}
+	if _, err = dotGit.ConfigWriter(); err != nil {
+		return
+	}
+	if err = dotGit.Close(); err != nil {
+		return
+	}
+	repoFS = dotGit.Fs()
+	repo, err = go_git.Init(memory.NewStorage(), nil)
+	return
+}
+
 // ServeHTTP fulfills the http.Handler contract for Handler
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.URL.Path)
+	requestPath := strings.TrimPrefix(request.URL.Path, fmt.Sprintf("/%v/", Name))
 	writer.Header().Add("Cache-Control", "no-cache")
 
-	path := request.URL.Path
-	err := fmt.Errorf("Invalid request: %v", path)
+	err := fmt.Errorf("Invalid request: %v", requestPath)
 
-	pathParts := strings.Split(path, "/")
+	pathParts := strings.Split(requestPath, "/")
 	service := pathParts[len(pathParts)-1]
 	isInfoRefsRequest := service == infoRefsService
 
@@ -113,8 +135,12 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		service = request.URL.Query().Get("service")
 	}
 
+	proto := "http"
+	if request.TLS != nil {
+		proto = "https"
+	}
 	repoPath := strings.Join(pathParts[0:len(pathParts)-trimParts], "/")
-	endpoint := fmt.Sprintf("%v://%v%v", "https", request.Host, repoPath)
+	endpoint := fmt.Sprintf("%v://%v/%v", proto, request.Host, repoPath)
 	transportEndpoint, err := transport.NewEndpoint(endpoint)
 	if err != nil {
 		handler.handleError(writer, http.StatusBadRequest, err)
@@ -150,9 +176,11 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 // New returns a new Handler
-func New() (handler *Handler) {
+func New(fsys billy.Filesystem) (handler *Handler) {
+	loader := server.NewFilesystemLoader(fsys)
+
 	logger := logging.New(Name)
-	handler = &Handler{logger: logger, server: go_git.DefaultServer}
+	handler = &Handler{logger, server.NewServer(loader)}
 	handlers.Register(Name, handler, logger)
 
 	return
