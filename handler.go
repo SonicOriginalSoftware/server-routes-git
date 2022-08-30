@@ -13,14 +13,10 @@ import (
 	"git.nathanblair.rocks/server/logging"
 
 	billy "github.com/go-git/go-billy/v5"
-	"github.com/go-git/go-billy/v5/memfs"
-	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/server"
-	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
-	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 const (
@@ -93,25 +89,7 @@ func (handler *Handler) receivePack(
 	return reportStatus.Encode(writer)
 }
 
-func createRepo() (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
-	dotGit := dotgit.New(memfs.New())
-	if err = dotGit.Initialize(); err != nil {
-		return
-	}
-	if _, err = dotGit.ConfigWriter(); err != nil {
-		return
-	}
-	if err = dotGit.Close(); err != nil {
-		return
-	}
-	repoFS = dotGit.Fs()
-	repo, err = go_git.Init(memory.NewStorage(), nil)
-	return
-}
-
-// ServeHTTP fulfills the http.Handler contract for Handler
-func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.URL.Path)
+func (handler *Handler) handleGitRequest(writer http.ResponseWriter, request *http.Request) {
 	requestPath := strings.TrimPrefix(request.URL.Path, fmt.Sprintf("/%v/", Name))
 	writer.Header().Add("Cache-Control", "no-cache")
 
@@ -173,6 +151,13 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 	if err != nil {
 		handler.handleError(writer, http.StatusBadRequest, err)
 	}
+}
+
+// ServeHTTP fulfills the http.Handler contract for Handler
+func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.URL.Path)
+
+	handler.handleGitRequest(writer, request)
 }
 
 // New returns a new Handler

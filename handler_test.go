@@ -12,46 +12,45 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
-	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
-	"github.com/go-git/go-git/v5/storage/memory"
 
 	"git.nathanblair.rocks/routes/git"
+	"git.nathanblair.rocks/routes/git/internal/repo"
 	lib "git.nathanblair.rocks/server"
+)
+
+const (
+	port       = "4430"
+	configPath = "config"
+	localHost  = "localhost"
+	remoteName = "go-git-test"
 )
 
 var certs []tls.Certificate
 
-func createRepo() (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
-	dotGit := dotgit.New(memfs.New())
-	if err = dotGit.Initialize(); err != nil {
-		return
-	}
-	if _, err = dotGit.ConfigWriter(); err != nil {
-		return
-	}
-	if err = dotGit.Close(); err != nil {
-		return
-	}
-	repoFS = dotGit.Fs()
-	repo, err = go_git.Init(memory.NewStorage(), nil)
-	return
-}
-
-func TestHandler(t *testing.T) {
-	const (
-		port       = "4430"
-		localHost  = "localhost"
-		remoteName = "go-git-test"
-		repoPath   = "repo"
-	)
+func TestCreateRepo(t *testing.T) {
 	var (
 		err      error
 		memoryFS billy.Filesystem
-		repo     *go_git.Repository
 	)
 
-	if memoryFS, repo, err = createRepo(); err != nil {
-		t.Fatalf("Could not initialize git in memory: %v", err)
+	if memoryFS, _, err = repo.Create(memfs.New()); err != nil {
+		t.Fatalf("Could not initialize repository: %v", err)
+	}
+
+	if _, err := memoryFS.Stat(configPath); err != nil {
+		t.Fatalf("Repository initialized incorrectly: %v", err)
+	}
+}
+
+func TestPush(t *testing.T) {
+	var (
+		err        error
+		memoryFS   billy.Filesystem
+		repository *go_git.Repository
+	)
+
+	if memoryFS, repository, err = repo.Create(memfs.New()); err != nil {
+		t.Fatalf("Could not initialize repository: %v", err)
 	}
 
 	route := fmt.Sprintf("localhost/%v/", git.Name)
@@ -59,7 +58,7 @@ func TestHandler(t *testing.T) {
 	t.Setenv("PORT", port)
 
 	remoteURL := fmt.Sprintf("http://%v:%v/%v", localHost, port, git.Name)
-	if _, err = repo.CreateRemote(&config.RemoteConfig{
+	if _, err = repository.CreateRemote(&config.RemoteConfig{
 		Name: remoteName,
 		URLs: []string{remoteURL},
 	}); err != nil {
@@ -79,12 +78,11 @@ func TestHandler(t *testing.T) {
 	exitCode, _ := lib.Run(ctx, certs)
 	defer close(exitCode)
 
-	err = repo.Push(options)
+	err = repository.Push(options)
 
 	cancelFunction()
 
-	returnCode := <-exitCode
-	if returnCode != 0 {
+	if returnCode := <-exitCode; returnCode != 0 {
 		t.Fatalf("Server errored: %v", returnCode)
 	}
 
