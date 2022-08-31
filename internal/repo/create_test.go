@@ -1,10 +1,9 @@
-package internal_test
+package repo_test
 
 import (
 	"testing"
 
-	"git.nathanblair.rocks/routes/git/internal"
-
+	"git.nathanblair.rocks/routes/git/internal/repo"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 )
@@ -19,7 +18,7 @@ func TestCreateRepo(t *testing.T) {
 		memoryFS billy.Filesystem
 	)
 
-	if memoryFS, _, err = internal.CreateRepo(memfs.New()); err != nil {
+	if memoryFS, _, err = repo.Create(memfs.New()); err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 

@@ -14,7 +14,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 
 	"git.nathanblair.rocks/routes/git"
-	"git.nathanblair.rocks/routes/git/internal"
+	"git.nathanblair.rocks/routes/git/internal/repo"
 	"git.nathanblair.rocks/routes/git/server"
 	lib "git.nathanblair.rocks/server"
 )
@@ -34,7 +34,7 @@ func TestPush(t *testing.T) {
 		repository *go_git.Repository
 	)
 
-	if memoryFS, repository, err = internal.CreateRepo(memfs.New()); err != nil {
+	if memoryFS, repository, err = repo.Create(memfs.New()); err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 
