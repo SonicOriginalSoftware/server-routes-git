@@ -3,12 +3,12 @@
 package server
 
 import (
-	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 
+	"git.nathanblair.rocks/routes/git"
+	"git.nathanblair.rocks/routes/git/internal"
 	"git.nathanblair.rocks/server/handlers"
 	"git.nathanblair.rocks/server/logging"
 
@@ -20,12 +20,8 @@ import (
 )
 
 const (
-	// Name is the name used to identify the service
-	Name = "git"
-
-	infoRefsService = "refs"
-	receiveService  = "git-receive-pack"
-	uploadService   = "git-upload-pack"
+	receiveService = "git-receive-pack"
+	uploadService  = "git-upload-pack"
 )
 
 // Handler handles Git requests
@@ -34,68 +30,15 @@ type Handler struct {
 	server transport.Transport
 }
 
-func uploadPack(
-	context context.Context,
-	session transport.Session,
-	body io.ReadCloser,
-	writer http.ResponseWriter,
-) (err error) {
-	uploadPackRequest := packp.NewUploadPackRequest()
-	if err = uploadPackRequest.Decode(body); err != nil {
-		return
-	}
-
-	uploadPackSession, ok := session.(transport.UploadPackSession)
-	if !ok {
-		err = fmt.Errorf("Could not create upload-pack session")
-		return
-	}
-
-	uploadResponse, err := uploadPackSession.UploadPack(context, uploadPackRequest)
-	if err != nil || uploadResponse == nil {
-		return
-	}
-
-	return uploadResponse.Encode(writer)
-}
-
-func receivePack(
-	context context.Context,
-	session transport.Session,
-	body io.ReadCloser,
-	writer http.ResponseWriter,
-) (err error) {
-	receivePackRequest := packp.NewReferenceUpdateRequest()
-	receivePackRequest.Decode(body)
-
-	receivePackSession, ok := session.(transport.ReceivePackSession)
-	if !ok {
-		err = fmt.Errorf("Could not create receive-pack session")
-		return
-	}
-
-	reportStatus, err := receivePackSession.ReceivePack(context, receivePackRequest)
-	if err != nil || reportStatus == nil {
-		return
-	}
-
-	return reportStatus.Encode(writer)
-}
-
 func handleRequest(
 	writer http.ResponseWriter,
 	request *http.Request,
+	requestPath string,
 	server transport.Transport,
 ) (statusCode int, err error) {
-	requestPath := strings.TrimPrefix(request.URL.Path, fmt.Sprintf("/%v/", Name))
-	writer.Header().Set("Cache-Control", "no-cache")
-	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	service, infoRefsRequest := internal.Parse(requestPath)
 
-	pathParts := strings.Split(requestPath, "/")
-	service := pathParts[len(pathParts)-1]
-	isInfoRefsRequest := service == infoRefsService
-
-	if service != receiveService && service != uploadService && !isInfoRefsRequest {
+	if service != receiveService && service != uploadService && !infoRefsRequest {
 		err = fmt.Errorf("Invalid request: %v", requestPath)
 		statusCode = http.StatusForbidden
 		return
@@ -103,7 +46,6 @@ func handleRequest(
 
 	contentTypeSuffix := "result"
 	trimParts := 1
-
 	if isInfoRefsRequest {
 		trimParts = 2
 		contentTypeSuffix = "advertisement"
@@ -128,12 +70,12 @@ func handleRequest(
 	if service == receiveService {
 		session, err = server.NewReceivePackSession(transportEndpoint, nil)
 		if !isInfoRefsRequest && err == nil {
-			err = receivePack(request.Context(), session, request.Body, writer)
+			err = internal.ReceivePack(request.Context(), session, request.Body, writer)
 		}
 	} else if service == uploadService {
 		session, err = server.NewUploadPackSession(transportEndpoint, nil)
 		if !isInfoRefsRequest && err == nil {
-			err = uploadPack(request.Context(), session, request.Body, writer)
+			err = internal.UploadPack(request.Context(), session, request.Body, writer)
 		}
 	}
 
@@ -150,9 +92,10 @@ func handleRequest(
 
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.URL.Path)
+	writer.Header().Set("Cache-Control", "no-cache")
+	writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	if statusCode, err := handleRequest(writer, request, handler.server); err != nil {
-		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		handler.logger.Error("%s", err)
 		http.Error(writer, err.Error(), statusCode)
 	}
@@ -162,9 +105,9 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 func New(fsys billy.Filesystem) (handler *Handler) {
 	loader := go_git_server.NewFilesystemLoader(fsys)
 
-	logger := logging.New(Name)
+	logger := logging.New(git.Name)
 	handler = &Handler{logger, go_git_server.NewServer(loader)}
-	handlers.Register(Name, handler, logger)
+	handlers.Register(git.Name, handler, logger)
 
 	return
 }
