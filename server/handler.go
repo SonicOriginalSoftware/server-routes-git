@@ -3,14 +3,12 @@
 package server
 
 import (
-	"context"
-	"io"
+	"fmt"
 	"net/http"
-	"net/url"
+	"strings"
 
 	"git.nathanblair.rocks/routes/git"
 	"git.nathanblair.rocks/routes/git/internal"
-	"git.nathanblair.rocks/routes/git/internal/pack"
 	"git.nathanblair.rocks/routes/git/internal/request"
 	"git.nathanblair.rocks/server/handlers"
 	"git.nathanblair.rocks/server/logging"
@@ -19,75 +17,45 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
+const contentTypeHeaderKey = "Content-Type"
+
 // Handler handles Git requests
 type Handler struct {
 	logger *logging.Logger
 	server transport.Transport
 }
 
-func handleRequest(
-	context context.Context,
-	isSecure bool,
-	host, requestPath string,
-	content io.ReadCloser,
-	writer http.ResponseWriter,
-	server transport.Transport,
-	query url.Values,
-) (statusCode int, err error) {
-	contentType,
-		isInfoRefsRequest,
-		isReceiveRequest,
-		isUploadRequest,
-		session,
-		err := request.Initialize(
-		context,
-		isSecure,
-		host,
-		requestPath,
-		server,
-		writer,
-		query,
-	)
-	if err != nil {
-		statusCode = http.StatusForbidden
-		return
-	}
-
-	writer.Header().Set("Content-Type", contentType)
-
-	if isReceiveRequest && !isInfoRefsRequest {
-		err = pack.Receive(context, session, content, writer)
-	} else if isUploadRequest && !isInfoRefsRequest {
-		err = pack.Upload(context, session, content, writer)
-	}
-	if err != nil {
-		statusCode = http.StatusBadRequest
-		return
-	}
-
-	return
-}
-
-func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	requestPath := request.URL.Path
-	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, requestPath)
+func (handler *Handler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
+	handler.logger.Info("(%v) %v %v\n", r.Host, r.Method, r.RequestURI)
+	requestPath := strings.TrimPrefix(r.URL.Path, fmt.Sprintf("/%v/", git.Name))
 	writer.Header().Set("Cache-Control", "no-cache")
 
-	isSecure := request.TLS != nil
-
-	if statusCode, err := handleRequest(
-		request.Context(),
-		isSecure,
-		request.Host,
-		requestPath,
-		request.Body,
-		writer,
-		handler.server,
-		request.URL.Query(),
-	); err != nil {
+	isInfoRefsRequest,
+		service,
+		contentType,
+		endpoint,
+		err := request.Parse(r.TLS != nil, r.Host, requestPath, r.URL.Query())
+	if err != nil {
 		handler.logger.Error("%s", err)
-		writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		http.Error(writer, err.Error(), statusCode)
+		writer.Header().Set(contentTypeHeaderKey, "text/plain; charset=utf-8")
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+	}
+
+	writer.Header().Set(contentTypeHeaderKey, contentType)
+
+	err = request.Do(
+		r.Context(),
+		isInfoRefsRequest,
+		service,
+		endpoint,
+		handler.server,
+		r.Body,
+		writer,
+	)
+	if err != nil {
+		handler.logger.Error("%s", err)
+		writer.Header().Set(contentTypeHeaderKey, "text/plain; charset=utf-8")
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
 }
 

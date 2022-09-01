@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -17,7 +16,7 @@ func Upload(
 	context context.Context,
 	session transport.Session,
 	content io.ReadCloser,
-	writer http.ResponseWriter,
+	writer io.Writer,
 ) (err error) {
 	uploadPackRequest := packp.NewUploadPackRequest()
 	if err = uploadPackRequest.Decode(content); err != nil {

@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/go-git/go-git/v5/plumbing/protocol/packp"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -17,7 +16,7 @@ func Receive(
 	context context.Context,
 	session transport.Session,
 	body io.ReadCloser,
-	writer http.ResponseWriter,
+	writer io.Writer,
 ) (err error) {
 	receivePackRequest := packp.NewReferenceUpdateRequest()
 	if err = receivePackRequest.Decode(body); err != nil {
