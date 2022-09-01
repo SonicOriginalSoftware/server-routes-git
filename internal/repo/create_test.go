@@ -8,9 +8,7 @@ import (
 	"github.com/go-git/go-billy/v5/memfs"
 )
 
-const (
-	configPath = "config"
-)
+const configPath = "config"
 
 func TestCreateRepo(t *testing.T) {
 	var (

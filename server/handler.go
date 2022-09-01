@@ -13,11 +13,12 @@ import (
 	"git.nathanblair.rocks/server/handlers"
 	"git.nathanblair.rocks/server/logging"
 
-	billy "github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
 const contentTypeHeaderKey = "Content-Type"
+const plainContentValue = "text/plain; charset=utf-8"
 
 // Handler handles Git requests
 type Handler struct {
@@ -37,7 +38,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
 		err := request.Parse(r.TLS != nil, r.Host, requestPath, r.URL.Query())
 	if err != nil {
 		handler.logger.Error("%s", err)
-		writer.Header().Set(contentTypeHeaderKey, "text/plain; charset=utf-8")
+		writer.Header().Set(contentTypeHeaderKey, plainContentValue)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
 
@@ -54,7 +55,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, r *http.Request) {
 	)
 	if err != nil {
 		handler.logger.Error("%s", err)
-		writer.Header().Set(contentTypeHeaderKey, "text/plain; charset=utf-8")
+		writer.Header().Set(contentTypeHeaderKey, plainContentValue)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
 }

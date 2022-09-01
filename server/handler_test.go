@@ -8,15 +8,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-git/go-billy/v5"
-	"github.com/go-git/go-billy/v5/memfs"
-	go_git "github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
-
 	"git.nathanblair.rocks/routes/git"
 	"git.nathanblair.rocks/routes/git/internal/repo"
 	"git.nathanblair.rocks/routes/git/server"
 	lib "git.nathanblair.rocks/server"
+
+	"github.com/go-git/go-billy/v5"
+	"github.com/go-git/go-billy/v5/memfs"
+	go_git "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 )
 
 const (
