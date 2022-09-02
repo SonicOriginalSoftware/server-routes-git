@@ -1,4 +1,6 @@
 .DS_Store
 *.log
 
+go.work
+
 __debug_bin
