@@ -14,10 +14,13 @@ import (
 // Upload handles upload-pack requests
 func Upload(
 	context context.Context,
-	session transport.Session,
+	server transport.Transport,
+	transportEndpoint *transport.Endpoint,
 	content io.ReadCloser,
 	writer io.Writer,
 ) (err error) {
+	session, err := server.NewUploadPackSession(transportEndpoint, nil)
+
 	packRequest := packp.NewUploadPackRequest()
 	if err = packRequest.Decode(content); err != nil {
 		return

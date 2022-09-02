@@ -14,10 +14,13 @@ import (
 // Receive handles receive-pack requests
 func Receive(
 	context context.Context,
-	session transport.Session,
+	server transport.Transport,
+	transportEndpoint *transport.Endpoint,
 	body io.ReadCloser,
 	writer io.Writer,
 ) (err error) {
+	session, err := server.NewReceivePackSession(transportEndpoint, nil)
+
 	packRequest := packp.NewReferenceUpdateRequest()
 	if err = packRequest.Decode(body); err != nil {
 		return
