@@ -18,21 +18,24 @@ func Receive(
 	body io.ReadCloser,
 	writer io.Writer,
 ) (err error) {
-	receivePackRequest := packp.NewReferenceUpdateRequest()
-	if err = receivePackRequest.Decode(body); err != nil {
+	packRequest := packp.NewReferenceUpdateRequest()
+	if err = packRequest.Decode(body); err != nil {
 		return
 	}
 
-	receivePackSession, ok := session.(transport.ReceivePackSession)
+	packSession, ok := session.(transport.ReceivePackSession)
 	if !ok {
 		err = fmt.Errorf("Could not create receive-pack session")
 		return
 	}
 
-	reportStatus, err := receivePackSession.ReceivePack(context, receivePackRequest)
-	if err != nil || reportStatus == nil {
+	response, err := packSession.ReceivePack(context, packRequest)
+	if err != nil {
+		return
+	} else if response == nil {
+		err = fmt.Errorf("Could not generate receive pack response from pack session")
 		return
 	}
 
-	return reportStatus.Encode(writer)
+	return response.Encode(writer)
 }

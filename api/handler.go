@@ -3,12 +3,15 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
-	"git.nathanblair.rocks/routes/git"
-	"git.nathanblair.rocks/server/handlers"
-	"git.nathanblair.rocks/server/logging"
+	"git.sonicoriginal.software/routes/git/internal"
+	"git.sonicoriginal.software/server/handlers"
+	"git.sonicoriginal.software/server/logging"
 )
+
+const apiPathName = "api"
 
 // Handler handles Git requests
 type Handler struct {
@@ -20,9 +23,10 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 // New returns a new Handler
 func New() (handler *Handler) {
-	logger := logging.New(git.Name)
+	logger := logging.New(internal.Name)
 	handler = &Handler{logger}
-	handlers.Register(git.Name, handler, logger)
+	apiPath := fmt.Sprintf("%v/%v", internal.Name, apiPathName)
+	handlers.Register(internal.Name, "", apiPath, handler, logger)
 
 	return
 }

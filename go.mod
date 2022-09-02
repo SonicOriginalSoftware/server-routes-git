@@ -1,9 +1,9 @@
-module git.nathanblair.rocks/routes/git
+module git.sonicoriginal.software/routes/git
 
 go 1.19
 
 require (
-	git.nathanblair.rocks/server v0.0.0
+	git.sonicoriginal.software/server v0.0.0
 	github.com/go-git/go-billy/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.4.2
 )
@@ -27,4 +27,4 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-// replace git.nathanblair.rocks/server v0.0.0 => ../../lib
+// replace git.sonicoriginal.software/server v0.0.0 => ../../lib

@@ -3,7 +3,7 @@ package repo_test
 import (
 	"testing"
 
-	"git.nathanblair.rocks/routes/git/internal/repo"
+	"git.sonicoriginal.software/routes/git/internal/repo"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 )

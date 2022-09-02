@@ -1,17 +1,15 @@
-package server_test
+package backend_test
 
 import (
 	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
-	"git.nathanblair.rocks/routes/git"
-	"git.nathanblair.rocks/routes/git/internal/repo"
-	"git.nathanblair.rocks/routes/git/server"
-	lib "git.nathanblair.rocks/server"
+	"git.sonicoriginal.software/routes/git/backend"
+	"git.sonicoriginal.software/routes/git/internal/repo"
+	lib "git.sonicoriginal.software/server"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
@@ -38,11 +36,9 @@ func TestPush(t *testing.T) {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 
-	route := fmt.Sprintf("localhost/%v/", git.Name)
-	t.Setenv(fmt.Sprintf("%v_SERVE_ADDRESS", strings.ToUpper(git.Name)), route)
 	t.Setenv("PORT", port)
 
-	remoteURL := fmt.Sprintf("http://%v:%v/%v", localHost, port, git.Name)
+	remoteURL := fmt.Sprintf("http://%v:%v/", localHost, port)
 	if _, err = repository.CreateRemote(&config.RemoteConfig{
 		Name: remoteName,
 		URLs: []string{remoteURL},
@@ -56,10 +52,9 @@ func TestPush(t *testing.T) {
 		RefSpecs:   []config.RefSpec{},
 	}
 
-	_ = server.New(memoryFS)
+	backend.Register(memoryFS)
 
 	ctx, cancelFunction := context.WithCancel(context.Background())
-
 	exitCode, _ := lib.Run(ctx, certs)
 	defer close(exitCode)
 

@@ -18,21 +18,24 @@ func Upload(
 	content io.ReadCloser,
 	writer io.Writer,
 ) (err error) {
-	uploadPackRequest := packp.NewUploadPackRequest()
-	if err = uploadPackRequest.Decode(content); err != nil {
+	packRequest := packp.NewUploadPackRequest()
+	if err = packRequest.Decode(content); err != nil {
 		return
 	}
 
-	uploadPackSession, ok := session.(transport.UploadPackSession)
+	packSession, ok := session.(transport.UploadPackSession)
 	if !ok {
 		err = fmt.Errorf("Could not create upload-pack session")
 		return
 	}
 
-	uploadResponse, err := uploadPackSession.UploadPack(context, uploadPackRequest)
-	if err != nil || uploadResponse == nil {
+	response, err := packSession.UploadPack(context, packRequest)
+	if err != nil {
+		return
+	} else if response == nil {
+		err = fmt.Errorf("Could not generate upload pack response from pack session")
 		return
 	}
 
-	return uploadResponse.Encode(writer)
+	return response.Encode(writer)
 }
