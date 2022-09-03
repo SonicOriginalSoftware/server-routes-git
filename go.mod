@@ -27,4 +27,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace git.sonicoriginal.software/routes/git => github.com/SonicOriginalSoftware/server-routes-git v0.0.0
+replace (
+	git.sonicoriginal.software/routes/git => github.com/SonicOriginalSoftware/server-routes-git v0.0.0
+)
