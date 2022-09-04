@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"git.sonicoriginal.software/routes/git/cgi"
-	"git.sonicoriginal.software/routes/git/internal/repo"
+	"git.sonicoriginal.software/routes/git/cgi/internal/repo"
 	lib "git.sonicoriginal.software/server"
 
 	"github.com/go-git/go-billy/v5/memfs"
@@ -41,7 +41,7 @@ func TestPush(t *testing.T) {
 		t.Fatalf("Could not create remote: %v", err)
 	}
 
-	cgi.Register(memoryFS)
+	cgi.New(memoryFS)
 
 	ctx, cancelFunction := context.WithCancel(context.Background())
 	exitCode, _ := lib.Run(ctx, certs)
