@@ -30,7 +30,13 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 
 	writer.Header().Set("Cache-Control", "no-cache")
 
-	service := ci.RetrieveService(request.URL.Path)
+	service, err := ci.RetrieveService(request.URL.Path)
+	if err != nil {
+		handler.logger.Error("%s", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	transportEndpoint, err := ci.RetrieveTransportEndpoint(
 		request.Host,
 		request.URL.Path,

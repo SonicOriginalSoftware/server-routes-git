@@ -10,15 +10,21 @@ import (
 )
 
 // RetrieveService parses the service from the request path
-func RetrieveService(requestPath string) (service string) {
+func RetrieveService(requestPath string) (service string, err error) {
 	pathParts := strings.Split(requestPath, "/")
 	pathLength := len(pathParts)
-	if pathLength >= 2 && strings.Join(pathParts[pathLength-2:pathLength], "/") == InfoRefsPath {
+	if pathLength < 2 {
+		err = fmt.Errorf("Invalid request: %v", requestPath)
+		return
+	}
+	if pathLength >= 3 && strings.Join(pathParts[pathLength-2:pathLength], "/") == InfoRefsPath {
 		service = InfoRefsPath
-	} else if pathParts[pathLength] == UploadPackPath {
+	} else if pathParts[pathLength-1] == UploadPackPath {
 		service = UploadPackPath
-	} else if pathParts[pathLength] == ReceivePackPath {
+	} else if pathParts[pathLength-1] == ReceivePackPath {
 		service = ReceivePackPath
+	} else {
+		err = fmt.Errorf("Invalid request: %v", requestPath)
 	}
 	return
 }
