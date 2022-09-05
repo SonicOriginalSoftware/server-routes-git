@@ -26,7 +26,7 @@ type Handler struct {
 }
 
 func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	handler.logger.Info("(%v) %v %v\n", request.Host, request.Method, request.RequestURI)
+	handler.logger.Info("%v %v\n", request.Method, request.RequestURI)
 
 	writer.Header().Set("Cache-Control", "no-cache")
 
