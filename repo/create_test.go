@@ -3,20 +3,16 @@ package repo_test
 import (
 	"testing"
 
-	"git.sonicoriginal.software/routes/git/cgi/internal/repo"
-	"github.com/go-git/go-billy/v5"
+	"git.sonicoriginal.software/routes/git/repo"
 	"github.com/go-git/go-billy/v5/memfs"
 )
 
 const configPath = "config"
 
 func TestCreateRepo(t *testing.T) {
-	var (
-		err      error
-		memoryFS billy.Filesystem
-	)
-
-	if memoryFS, _, err = repo.Create(memfs.New()); err != nil {
+	memoryFS := memfs.New()
+	err := repo.Create(memoryFS, "/")
+	if err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 

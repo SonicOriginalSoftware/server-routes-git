@@ -8,12 +8,13 @@ import (
 	"testing"
 
 	"git.sonicoriginal.software/routes/git/cgi"
-	"git.sonicoriginal.software/routes/git/cgi/internal/repo"
+	"git.sonicoriginal.software/routes/git/repo"
 	lib "git.sonicoriginal.software/server"
 
 	"github.com/go-git/go-billy/v5/memfs"
 	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 const (
@@ -25,10 +26,14 @@ const (
 var certs []tls.Certificate
 
 func TestPush(t *testing.T) {
-	memoryFS, repository, err := repo.Create(memfs.New())
+	memoryFS := memfs.New()
+
+	err := repo.Create(memoryFS, "/")
 	if err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
+
+	repository, err := go_git.Init(memory.NewStorage(), nil)
 
 	t.Setenv("PORT", port)
 

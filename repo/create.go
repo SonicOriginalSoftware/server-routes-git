@@ -3,15 +3,24 @@
 package repo
 
 import (
+	"io/fs"
+
 	billy "github.com/go-git/go-billy/v5"
-	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
-	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 // Create a repo in a given filesystem
-func Create(fsys billy.Filesystem) (repoFS billy.Filesystem, repo *go_git.Repository, err error) {
-	dotGit := dotgit.New(fsys)
+func Create(rootFS billy.Filesystem, repoPath string) (err error) {
+	err = rootFS.MkdirAll(repoPath, fs.ModeDir)
+	if err != nil {
+		return
+	}
+	repoFS, err := rootFS.Chroot(repoPath)
+	if err != nil {
+		return
+	}
+
+	dotGit := dotgit.New(repoFS)
 	if err = dotGit.Initialize(); err != nil {
 		return
 	}
@@ -21,7 +30,5 @@ func Create(fsys billy.Filesystem) (repoFS billy.Filesystem, repo *go_git.Reposi
 	if err = dotGit.Close(); err != nil {
 		return
 	}
-	repoFS = dotGit.Fs()
-	repo, err = go_git.Init(memory.NewStorage(), nil)
 	return
 }

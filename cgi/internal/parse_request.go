@@ -32,6 +32,7 @@ func RetrieveService(requestPath string) (service string, err error) {
 // RetrieveTransportEndpoint generates the transport endpoint from incoming request parameters
 func RetrieveTransportEndpoint(requestHost, requestPath, trimString string, isSecure bool) (*transport.Endpoint, error) {
 	repoPath := strings.TrimSuffix(requestPath, trimString)
+	repoPath = strings.TrimPrefix(repoPath, "/")
 	proto := "http"
 	if isSecure {
 		proto = "https"
