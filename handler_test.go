@@ -1,4 +1,4 @@
-package cgi_test
+package git_test
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"git.sonicoriginal.software/routes/git/cgi"
+	"git.sonicoriginal.software/routes/git"
 	"git.sonicoriginal.software/routes/git/repo"
 	lib "git.sonicoriginal.software/server"
 
@@ -46,7 +46,8 @@ func TestPush(t *testing.T) {
 		t.Fatalf("Could not create remote: %v", err)
 	}
 
-	cgi.New(memoryFS)
+	server := git.NewServer(memoryFS)
+	git.New(server)
 
 	ctx, cancelFunction := context.WithCancel(context.Background())
 	exitCode, _ := lib.Run(ctx, certs)

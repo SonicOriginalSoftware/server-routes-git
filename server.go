@@ -1,6 +1,6 @@
 //revive:disable:package-comments
 
-package internal
+package git
 
 import (
 	"github.com/go-git/go-billy/v5"

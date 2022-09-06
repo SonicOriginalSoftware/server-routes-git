@@ -1,19 +1,18 @@
 //revive:disable:package-comments
 
-package cgi
+package git
 
 import (
 	"fmt"
 	"net/http"
 
-	ci "git.sonicoriginal.software/routes/git/cgi/internal"
-	info "git.sonicoriginal.software/routes/git/cgi/internal/info_refs"
-	"git.sonicoriginal.software/routes/git/cgi/internal/pack"
 	"git.sonicoriginal.software/routes/git/internal"
+	ci "git.sonicoriginal.software/routes/git/internal"
+	info "git.sonicoriginal.software/routes/git/internal/info_refs"
+	"git.sonicoriginal.software/routes/git/internal/pack"
 	"git.sonicoriginal.software/server/handlers"
 	"git.sonicoriginal.software/server/logging"
 
-	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
@@ -76,8 +75,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 }
 
 // New generates a new git Handler
-func New(fsys billy.Filesystem) (handler *Handler) {
-	server := ci.NewServer(fsys)
+func New(server transport.Transport) (handler *Handler) {
 	logger := logging.New(internal.Name)
 	handler = &Handler{logger, server}
 	handlers.Register(internal.Name, "", rootPath, handler, logger)

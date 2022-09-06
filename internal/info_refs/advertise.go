@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	ci "git.sonicoriginal.software/routes/git/cgi/internal"
+	"git.sonicoriginal.software/routes/git/internal"
 
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -22,9 +22,9 @@ func Advertise(
 	writer io.Writer,
 ) (err error) {
 	var session transport.Session
-	if service == ci.ReceivePackPath {
+	if service == internal.ReceivePackPath {
 		session, err = server.NewReceivePackSession(transportEndpoint, nil)
-	} else if service == ci.UploadPackPath {
+	} else if service == internal.UploadPackPath {
 		session, err = server.NewUploadPackSession(transportEndpoint, nil)
 	}
 	if err != nil {
