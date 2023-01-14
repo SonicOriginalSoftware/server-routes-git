@@ -28,14 +28,12 @@ var certs []tls.Certificate
 func TestPush(t *testing.T) {
 	memoryFS := memfs.New()
 
-	err := repo.Create(memoryFS, "/")
-	if err != nil {
+	var err error
+	if err = repo.Create(memoryFS, "/"); err != nil {
 		t.Fatalf("Could not initialize repository: %v", err)
 	}
 
 	repository, err := go_git.Init(memory.NewStorage(), nil)
-
-	t.Setenv("PORT", port)
 
 	remoteURL := fmt.Sprintf("http://%v:%v/", localHost, port)
 	_, err = repository.CreateRemote(&config.RemoteConfig{
@@ -47,18 +45,18 @@ func TestPush(t *testing.T) {
 	}
 
 	server := git.NewServer(memoryFS)
+	t.Setenv("PORT", port)
 	git.New(server)
 
 	ctx, cancelFunction := context.WithCancel(context.Background())
-	exitCode, _ := lib.Run(ctx, certs)
-	defer close(exitCode)
+	_, errChan := lib.Run(ctx, certs)
 
 	err = repository.Push(&go_git.PushOptions{RemoteName: remoteName})
 
 	cancelFunction()
 
-	if returnCode := <-exitCode; returnCode != 0 {
-		t.Fatalf("Server errored: %v", returnCode)
+	if err = <-errChan; err != nil {
+		t.Fatalf("Server errored: %v", err)
 	}
 
 	if err != nil && !errors.Is(err, go_git.NoErrAlreadyUpToDate) {
