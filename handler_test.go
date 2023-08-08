@@ -5,11 +5,13 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net/http"
 	"testing"
 
 	"git.sonicoriginal.software/routes/git"
 	"git.sonicoriginal.software/routes/git/repo"
-	lib "git.sonicoriginal.software/server"
+
+	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-billy/v5/memfs"
 	go_git "github.com/go-git/go-git/v5"
@@ -18,45 +20,63 @@ import (
 )
 
 const (
-	port       = "4430"
-	localHost  = "localhost"
+	portEnvKey = "TEST_PORT"
 	remoteName = "go-git-test"
+	port       = "4430"
 )
 
-var certs []tls.Certificate
+var (
+	certs []tls.Certificate
+	mux   *http.ServeMux = nil
+)
 
 func TestPush(t *testing.T) {
+	t.Setenv(portEnvKey, port)
 	memoryFS := memfs.New()
+	gitServer := git.NewServer(memoryFS)
+	route := git.New(gitServer, mux)
 
-	var err error
-	if err = repo.Create(memoryFS, "/"); err != nil {
-		t.Fatalf("Could not initialize repository: %v", err)
+	t.Logf("Handler registered for route [%v]\n", route)
+
+	ctx, cancelFunction := context.WithCancel(context.Background())
+	address, serverErrorChannel := server.Run(ctx, &certs, mux, portEnvKey)
+
+	t.Logf("Serving on [%v]\n", address)
+
+	err := repo.Create(memoryFS, "/")
+	if err != nil {
+		t.Fatalf("Could not create repository: %v", err)
 	}
 
 	repository, err := go_git.Init(memory.NewStorage(), nil)
-
-	remoteURL := fmt.Sprintf("http://%v:%v/", localHost, port)
-	_, err = repository.CreateRemote(&config.RemoteConfig{
-		Name: remoteName,
-		URLs: []string{remoteURL},
-	})
 	if err != nil {
+		t.Fatalf("Could not initialize repository: %v", err)
+	}
+
+	remoteURL := fmt.Sprintf("http://%v%v", address, route)
+
+	t.Logf("Creating remote with URL [%v]\n", remoteURL)
+
+	if _, err = repository.CreateRemote(&config.RemoteConfig{Name: remoteName, URLs: []string{remoteURL}}); err != nil {
 		t.Fatalf("Could not create remote: %v", err)
 	}
 
-	server := git.NewServer(memoryFS)
-	t.Setenv("PORT", port)
-	git.New(server)
-
-	ctx, cancelFunction := context.WithCancel(context.Background())
-	_, errChan := lib.Run(ctx, certs)
+	t.Logf("Pushing to remote [%v]\n", remoteURL)
 
 	err = repository.Push(&go_git.PushOptions{RemoteName: remoteName})
 
 	cancelFunction()
 
-	if err = <-errChan; err != nil {
-		t.Fatalf("Server errored: %v", err)
+	serverError := <-serverErrorChannel
+	if serverError.Close != nil {
+		t.Fatalf("Error closing server: %v", serverError.Close.Error())
+	}
+	contextError := serverError.Context.Error()
+
+	t.Logf("%v\n", contextError)
+
+	if contextError != server.ErrContextCancelled.Error() {
+		t.Fatalf("Server failed unexpectedly: %v", contextError)
 	}
 
 	if err != nil && !errors.Is(err, go_git.NoErrAlreadyUpToDate) {

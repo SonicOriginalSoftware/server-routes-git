@@ -1,11 +1,13 @@
+git.sonicoriginal.software/logger.git v1.0.2 h1:piQdmBFsakcJMydwIhzMgik2XO3gmJ7vtL132FQQio0=
+git.sonicoriginal.software/logger.git v1.0.2/go.mod h1:85iRN4FpCF11i+B5NPiLfn3foEv3xn4PrPe9fA8k/UA=
+git.sonicoriginal.software/server.git/v2 v2.0.0-rc6 h1:8eA/oFY0PtZqVS79AhH1HRQh0Q7bueta0AxUiFoG1yA=
+git.sonicoriginal.software/server.git/v2 v2.0.0-rc6/go.mod h1:Dp1e9tZDX8Hb1VjRcro/9lQLouOsA2TlLoVzEEsYpV4=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
 github.com/Microsoft/go-winio v0.6.0 h1:slsWYD/zyx7lCXoZVlvQrj0hPTM1HI4+v1sIda2yDvg=
 github.com/Microsoft/go-winio v0.6.0/go.mod h1:cTAf44im0RAYeL23bpB+fzCyDH2MJiz2BO69KH/soAE=
 github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4/go.mod h1:UBYPn8k0D56RtnR8RFQMjmh4KrZzWJ5o7Z9SYjossQ8=
 github.com/ProtonMail/go-crypto v0.0.0-20230113180642-068501e20d67 h1:prYO7+yhqRjrP/lryCKZG4ieyeoKE40r8BKokURLd5M=
 github.com/ProtonMail/go-crypto v0.0.0-20230113180642-068501e20d67/go.mod h1:UBYPn8k0D56RtnR8RFQMjmh4KrZzWJ5o7Z9SYjossQ8=
-github.com/SonicOriginalSoftware/server v0.0.0 h1:7lWNwfBFyGzE9d+Rhbcvar+x7TdxuqosWtJ3T1M/a9U=
-github.com/SonicOriginalSoftware/server v0.0.0/go.mod h1:L5W/p2QUDWT6khXmce3en3hlJEntoQjoVSeGKJvQoIE=
 github.com/acomagu/bufpipe v1.0.3 h1:fxAGrHZTgQ9w5QqVItgzwj235/uYZYgbXitB+dLupOk=
 github.com/acomagu/bufpipe v1.0.3/go.mod h1:mxdxdup/WdsKVreO5GpW4+M/1CE2sMG4jeGJ2sYmHc4=
 github.com/anmitsu/go-shlex v0.0.0-20200514113438-38f4b401e2be h1:9AeTilPcZAjCFIImctFaOjnTIavg87rW78vTPkQqLI8=

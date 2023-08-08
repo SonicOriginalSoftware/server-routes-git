@@ -5,79 +5,89 @@ package git
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"git.sonicoriginal.software/routes/git/internal"
-	ci "git.sonicoriginal.software/routes/git/internal"
 	info "git.sonicoriginal.software/routes/git/internal/info_refs"
 	"git.sonicoriginal.software/routes/git/internal/pack"
-	"git.sonicoriginal.software/server/handlers"
-	"git.sonicoriginal.software/server/logging"
+
+	"git.sonicoriginal.software/logger.git"
+	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
-const rootPath = "/"
+const (
+	name = "git"
+
+	// contentTypeHeaderKey is the key for the Content-Type header
+	contentTypeHeaderKey = "Content-Type"
+)
 
 // Handler handles git requests
-type Handler struct {
-	logger logging.Log
+type handler struct {
+	logger logger.Log
 	server transport.Transport
 }
 
-func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	handler.logger.Info("%v %v\n", request.Method, request.RequestURI)
+func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	h.logger.Info("%v %v\n", request.Method, request.RequestURI)
 
 	writer.Header().Set("Cache-Control", "no-cache")
 
-	service, err := ci.RetrieveService(request.URL.Path)
+	service, err := internal.RetrieveService(request.URL.Path)
 	if err != nil {
-		handler.logger.Error("%s", err)
+		h.logger.Error("%s", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	transportEndpoint, err := ci.RetrieveTransportEndpoint(
+	transportEndpoint, err := internal.RetrieveTransportEndpoint(
 		request.Host,
 		request.URL.Path,
 		service,
 		request.TLS != nil,
 	)
 	if err != nil {
-		handler.logger.Error("%s", err)
+		h.logger.Error("%s", err)
 		http.Error(writer, err.Error(), http.StatusNotAcceptable)
 		return
 	}
 
 	switch service {
-	case ci.InfoRefsPath:
+	case internal.InfoRefsPath:
 		service = request.URL.Query().Get("service")
 		contentType := fmt.Sprintf("application/x-%v-advertisement", service)
-		writer.Header().Set(internal.ContentTypeHeaderKey, contentType)
+		writer.Header().Set(contentTypeHeaderKey, contentType)
 
-		err = info.Advertise(request.Context(), service, transportEndpoint, handler.server, writer)
-	case ci.ReceivePackPath:
-		contentType := fmt.Sprintf("application/x-%v-result", ci.ReceivePackPath)
-		writer.Header().Set(internal.ContentTypeHeaderKey, contentType)
-		err = pack.Receive(request.Context(), handler.server, transportEndpoint, request.Body, writer)
+		err = info.Advertise(request.Context(), service, transportEndpoint, h.server, writer)
+	case internal.ReceivePackPath:
+		contentType := fmt.Sprintf("application/x-%v-result", internal.ReceivePackPath)
+		writer.Header().Set(contentTypeHeaderKey, contentType)
+		err = pack.Receive(request.Context(), h.server, transportEndpoint, request.Body, writer)
 		break
-	case ci.UploadPackPath:
-		contentType := fmt.Sprintf("application/x-%v-result", ci.UploadPackPath)
-		writer.Header().Set(internal.ContentTypeHeaderKey, contentType)
-		err = pack.Upload(request.Context(), handler.server, transportEndpoint, request.Body, writer)
+	case internal.UploadPackPath:
+		contentType := fmt.Sprintf("application/x-%v-result", internal.UploadPackPath)
+		writer.Header().Set(contentTypeHeaderKey, contentType)
+		err = pack.Upload(request.Context(), h.server, transportEndpoint, request.Body, writer)
 	default:
 		err = fmt.Errorf("Invalid request: %v", service)
 	}
 
 	if err != nil {
-		handler.logger.Error("%s", err)
+		h.logger.Error("%s", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 	}
 }
 
 // New generates a new git Handler
-func New(server transport.Transport) (handler *Handler) {
-	logger := logging.New(internal.Name)
-	handler = &Handler{logger, server}
-	handlers.Register(internal.Name, "", rootPath, handler, logger)
-	return
+func New(transport transport.Transport, mux *http.ServeMux) (route string) {
+	logger := logger.New(
+		name,
+		logger.DefaultSeverity,
+		os.Stdout,
+		os.Stderr,
+	)
+
+	return server.RegisterHandler(name, &handler{logger, transport}, mux)
 }

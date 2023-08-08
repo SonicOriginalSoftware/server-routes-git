@@ -3,7 +3,8 @@ module git.sonicoriginal.software/routes/git
 go 1.19
 
 require (
-	git.sonicoriginal.software/server v0.0.0
+	git.sonicoriginal.software/logger.git v1.0.2
+	git.sonicoriginal.software/server.git/v2 v2.0.0-rc6
 	github.com/go-git/go-billy/v5 v5.4.0
 	github.com/go-git/go-git/v5 v5.5.2
 )
@@ -28,9 +29,4 @@ require (
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/tools v0.5.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-)
-
-replace (
-	git.sonicoriginal.software/routes/git => github.com/SonicOriginalSoftware/server-routes-git v0.0.0
-	git.sonicoriginal.software/server => github.com/SonicOriginalSoftware/server v0.0.0
 )
