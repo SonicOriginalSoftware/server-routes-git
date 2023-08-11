@@ -1,13 +1,11 @@
 //revive:disable:package-comments
 
-package info
+package internal
 
 import (
 	"context"
 	"fmt"
 	"io"
-
-	"git.sonicoriginal.software/routes/git/internal"
 
 	"github.com/go-git/go-git/v5/plumbing/format/pktline"
 	"github.com/go-git/go-git/v5/plumbing/transport"
@@ -22,9 +20,9 @@ func Advertise(
 	writer io.Writer,
 ) (err error) {
 	var session transport.Session
-	if service == internal.ReceivePackPath {
+	if service == ReceivePackPath {
 		session, err = server.NewReceivePackSession(transportEndpoint, nil)
-	} else if service == internal.UploadPackPath {
+	} else if service == UploadPackPath {
 		session, err = server.NewUploadPackSession(transportEndpoint, nil)
 	}
 	if err != nil {

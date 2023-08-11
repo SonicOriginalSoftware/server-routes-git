@@ -8,13 +8,13 @@ import (
 	"os"
 
 	"git.sonicoriginal.software/routes/git/internal"
-	info "git.sonicoriginal.software/routes/git/internal/info_refs"
 	"git.sonicoriginal.software/routes/git/internal/pack"
 
 	"git.sonicoriginal.software/logger.git"
 	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
+	git_server "github.com/go-git/go-git/v5/plumbing/transport/server"
 )
 
 const (
@@ -60,7 +60,7 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		contentType := fmt.Sprintf("application/x-%v-advertisement", service)
 		writer.Header().Set(contentTypeHeaderKey, contentType)
 
-		err = info.Advertise(request.Context(), service, transportEndpoint, h.server, writer)
+		err = internal.Advertise(request.Context(), service, transportEndpoint, h.server, writer)
 	case internal.ReceivePackPath:
 		contentType := fmt.Sprintf("application/x-%v-result", internal.ReceivePackPath)
 		writer.Header().Set(contentTypeHeaderKey, contentType)
@@ -81,7 +81,7 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 }
 
 // New generates a new git Handler
-func New(transport transport.Transport, mux *http.ServeMux) (route string) {
+func New(serverLoader git_server.Loader, mux *http.ServeMux) (route string) {
 	logger := logger.New(
 		name,
 		logger.DefaultSeverity,
@@ -89,5 +89,9 @@ func New(transport transport.Transport, mux *http.ServeMux) (route string) {
 		os.Stderr,
 	)
 
-	return server.RegisterHandler(name, &handler{logger, transport}, mux)
+	// serverLoader := git_server.NewFilesystemLoader(fsys)
+	// serverLoader := git_server.MapLoader{}
+	gitServer := git_server.NewServer(serverLoader)
+	h := &handler{logger, gitServer}
+	return server.RegisterHandler(name, h, mux)
 }
