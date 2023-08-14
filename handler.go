@@ -18,8 +18,6 @@ import (
 )
 
 const (
-	name = "git"
-
 	// contentTypeHeaderKey is the key for the Content-Type header
 	contentTypeHeaderKey = "Content-Type"
 )
@@ -81,17 +79,20 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 }
 
 // New generates a new git Handler
-func New(serverLoader git_server.Loader, mux *http.ServeMux) (route string) {
+func New(path string, serverLoader git_server.Loader, mux *http.ServeMux) (route string) {
 	logger := logger.New(
-		name,
+		fmt.Sprintf("%v", path),
 		logger.DefaultSeverity,
 		os.Stdout,
 		os.Stderr,
 	)
 
-	// serverLoader := git_server.NewFilesystemLoader(fsys)
-	// serverLoader := git_server.MapLoader{}
-	gitServer := git_server.NewServer(serverLoader)
-	h := &handler{logger, gitServer}
-	return server.RegisterHandler(name, h, mux)
+	return server.RegisterHandler(
+		path,
+		&handler{
+			logger,
+			git_server.NewServer(serverLoader),
+		},
+		mux,
+	)
 }
