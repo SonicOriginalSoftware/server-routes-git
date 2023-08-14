@@ -69,20 +69,6 @@ func setup(t *testing.T, filesystem billy.Filesystem, remoteStorage *memory.Stor
 	return
 }
 
-func checkServer(t *testing.T, serverErrorChannel chan server.Error) {
-	serverError := <-serverErrorChannel
-	contextError := serverError.Context.Error()
-	t.Logf("Server [%v] stopped: %v", remoteAddress, contextError)
-
-	if serverError.Close != nil {
-		t.Fatalf("Error closing server: %v", serverError.Close.Error())
-	}
-
-	if contextError != server.ErrContextCancelled.Error() {
-		t.Fatalf("Server failed unexpectedly: %v", contextError)
-	}
-}
-
 func noContent(t *testing.T) {
 	remoteURL, localRepo, _ := setup(t, memfs.New(), memory.NewStorage())
 
@@ -151,5 +137,15 @@ func TestPush(t *testing.T) {
 
 	cancelFunction()
 
-	checkServer(t, serverErrorChannel)
+	serverError := <-serverErrorChannel
+	contextError := serverError.Context.Error()
+	t.Logf("Server [%v] stopped: %v", remoteAddress, contextError)
+
+	if serverError.Close != nil {
+		t.Fatalf("Error closing server: %v", serverError.Close.Error())
+	}
+
+	if contextError != server.ErrContextCancelled.Error() {
+		t.Fatalf("Server failed unexpectedly: %v", contextError)
+	}
 }
