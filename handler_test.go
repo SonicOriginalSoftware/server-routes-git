@@ -40,22 +40,26 @@ func TestPush(t *testing.T) {
 		t.Fatalf("Could not initialize local repository: %v", err)
 	}
 
-	// remoteWorktree := memfs.New()
-	remoteStorer := memory.NewStorage()
-
 	ctx, cancelFunction := context.WithCancel(context.Background())
 	address, serverErrorChannel := server.Run(ctx, &certs, mux, portEnvKey)
 	t.Logf("Serving on [%v]\n", address)
 
-	remoteURL := fmt.Sprintf("http://%v%v", address, route)
-	remoteURL = strings.TrimSuffix(remoteURL, "/")
+	const gitRoute = "/git/"
+	remoteURL := fmt.Sprintf("http://%v%v", address, gitRoute)
+
+	serverLoader := git_server.MapLoader{remoteURL: memory.NewStorage()}
 
 	// FIXME This needs an actual remote filesystem
 	// More importantly, it needs the `config` file in the .git directory (i.e. a bare repo)
-	serverLoader := git_server.MapLoader{remoteURL: remoteStorer}
 	route := git.New(serverLoader, mux)
+	if route != gitRoute {
+		cancelFunction()
+		t.Fatalf("%v != %v\n", route, remoteURL)
+	}
+
 	t.Logf("Handler registered for route [%v]\n", route)
 
+	remoteURL = strings.TrimSuffix(remoteURL, "/")
 	t.Logf("Creating remote with URL [%v]\n", remoteURL)
 	_, err = localRepo.CreateRemote(&config.RemoteConfig{Name: remoteName, URLs: []string{remoteURL}})
 	if err != nil {
