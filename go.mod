@@ -1,4 +1,4 @@
-module git.sonicoriginal.software/routes/git
+module git.sonicoriginal.software/routes/git.git
 
 go 1.19
 

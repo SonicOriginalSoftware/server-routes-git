@@ -9,8 +9,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/transport"
 )
 
-// RetrieveService parses the service from the request path
-func RetrieveService(requestPath string) (service string, err error) {
+// ParsePath parses the service from the request path
+func ParsePath(requestPath string) (service string, err error) {
 	pathParts := strings.Split(requestPath, "/")
 	pathLength := len(pathParts)
 	if pathLength < 2 {

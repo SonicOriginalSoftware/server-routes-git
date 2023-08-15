@@ -7,19 +7,14 @@ import (
 	"net/http"
 	"os"
 
-	"git.sonicoriginal.software/routes/git/internal"
-	"git.sonicoriginal.software/routes/git/internal/pack"
+	"git.sonicoriginal.software/routes/git.git/internal"
+	"git.sonicoriginal.software/routes/git.git/internal/pack"
 
 	"git.sonicoriginal.software/logger.git"
 	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	git_server "github.com/go-git/go-git/v5/plumbing/transport/server"
-)
-
-const (
-	// contentTypeHeaderKey is the key for the Content-Type header
-	contentTypeHeaderKey = "Content-Type"
 )
 
 // Handler handles git requests
@@ -33,7 +28,7 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Cache-Control", "no-cache")
 
-	service, err := internal.RetrieveService(request.URL.Path)
+	requestPath, err := internal.ParsePath(request.URL.Path)
 	if err != nil {
 		h.logger.Error("%s", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
@@ -43,7 +38,7 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	transportEndpoint, err := internal.RetrieveTransportEndpoint(
 		request.Host,
 		request.URL.Path,
-		service,
+		requestPath,
 		request.TLS != nil,
 	)
 	if err != nil {
@@ -52,24 +47,28 @@ func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	switch service {
-	case internal.InfoRefsPath:
-		service = request.URL.Query().Get("service")
-		contentType := fmt.Sprintf("application/x-%v-advertisement", service)
-		writer.Header().Set(contentTypeHeaderKey, contentType)
+	contentTypeRequest := requestPath
+	contentTypeSuffix := "result"
 
+	var service string
+	if requestPath == internal.InfoRefsPath {
+		service = request.URL.Query().Get("service")
+		contentTypeRequest = service
+		contentTypeSuffix = "advertisement"
+	}
+
+	contentType := fmt.Sprintf("application/x-%v-%v", contentTypeRequest, contentTypeSuffix)
+	writer.Header().Set("Content-Type", contentType)
+
+	switch requestPath {
+	case internal.InfoRefsPath:
 		err = internal.Advertise(request.Context(), service, transportEndpoint, h.server, writer)
 	case internal.ReceivePackPath:
-		contentType := fmt.Sprintf("application/x-%v-result", internal.ReceivePackPath)
-		writer.Header().Set(contentTypeHeaderKey, contentType)
 		err = pack.Receive(request.Context(), h.server, transportEndpoint, request.Body, writer)
-		break
 	case internal.UploadPackPath:
-		contentType := fmt.Sprintf("application/x-%v-result", internal.UploadPackPath)
-		writer.Header().Set(contentTypeHeaderKey, contentType)
 		err = pack.Upload(request.Context(), h.server, transportEndpoint, request.Body, writer)
 	default:
-		err = fmt.Errorf("Invalid request: %v", service)
+		err = fmt.Errorf("Invalid request: %v", requestPath)
 	}
 
 	if err != nil {

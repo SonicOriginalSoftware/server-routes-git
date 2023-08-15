@@ -1,3 +1,5 @@
+//revive:disable:package-comments
+
 package git_test
 
 import (
@@ -9,23 +11,24 @@ import (
 	"strings"
 	"testing"
 
-	"git.sonicoriginal.software/routes/git"
-
+	"git.sonicoriginal.software/routes/git.git"
 	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	go_git "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	git_server "github.com/go-git/go-git/v5/plumbing/transport/server"
 	"github.com/go-git/go-git/v5/storage/memory"
 )
 
 const (
-	portEnvKey = "TEST_PORT"
-	remoteName = "go-git-test"
-	port       = "4430"
+	defaultBranch = plumbing.Main
+	remoteName    = "go-git-test"
+	portEnvKey    = "TEST_PORT"
+	port          = "4430"
 )
 
 var (
@@ -35,26 +38,33 @@ var (
 	ctx, cancelFunction = context.WithCancel(context.Background())
 )
 
-func setup(t *testing.T, filesystem billy.Filesystem, remoteStorage *memory.Storage) (
-	remoteURL string,
-	localRepo *go_git.Repository,
-	remoteRepo *go_git.Remote,
-) {
-	localRepo, err := go_git.Init(memory.NewStorage(), filesystem)
+func setupLocalRepo(t *testing.T, worktree billy.Filesystem) (localRepo *go_git.Repository) {
+	localRepo, err := go_git.InitWithOptions(
+		memory.NewStorage(),
+		worktree,
+		go_git.InitOptions{
+			DefaultBranch: defaultBranch,
+		},
+	)
 	if err != nil {
 		t.Fatalf("Could not initialize local repository: %v", err)
 	}
 
+	return
+}
+
+func setupRemoteRepo(t *testing.T, sourceRepo *go_git.Repository, remoteStorage *memory.Storage) (remoteRepo *go_git.Remote) {
 	path := fmt.Sprintf("%v", t.Name())
-	remoteURL = fmt.Sprintf("http://%v/%v/", remoteAddress, path)
+	remoteURL := fmt.Sprintf("http://%v/%v/", remoteAddress, path)
 
 	route := git.New(path, git_server.MapLoader{remoteURL: remoteStorage}, testMux)
 	t.Logf("Handler registered for route [%v]\n", route)
 
-	remoteRepo, err = localRepo.CreateRemote(
+	remoteRepo, err := sourceRepo.CreateRemote(
 		&config.RemoteConfig{
 			Name: remoteName,
 			URLs: []string{strings.TrimSuffix(remoteURL, "/")},
+			// Fetch: []config.RefSpec{},
 		},
 	)
 	if err != nil {
@@ -69,10 +79,48 @@ func setup(t *testing.T, filesystem billy.Filesystem, remoteStorage *memory.Stor
 	return
 }
 
-func noContent(t *testing.T) {
-	remoteURL, localRepo, _ := setup(t, memfs.New(), memory.NewStorage())
+func populateFilesystem(t *testing.T) (fileSystem billy.Filesystem) {
+	fileSystem = memfs.New()
 
-	t.Logf("Pushing to remote [%v]\n", remoteURL)
+	file, err := fileSystem.Create("dummy")
+	if err != nil {
+		t.Fatalf("Could not create local repo file: %v", err)
+	}
+	if _, err = file.Write([]byte("Test content")); err != nil {
+		t.Fatalf("Could not write local repo file: %v", err)
+	}
+	if err = file.Close(); err != nil {
+		t.Fatalf("Could not close local repo file: %v", err)
+	}
+
+	return
+}
+
+func addCommitInRepo(t *testing.T, repo *go_git.Repository) (commit plumbing.Hash) {
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatalf("Could not obtain local worktree: %v", err)
+	}
+
+	if err = wt.AddWithOptions(&go_git.AddOptions{All: true}); err != nil {
+		t.Fatalf("Could not add files: %v", err)
+	}
+
+	commit, err = wt.Commit("test commit", &go_git.CommitOptions{
+		Author: &object.Signature{Name: "Test", Email: "test@example.com"},
+	})
+	if err != nil {
+		t.Fatalf("Could not commit worktree: %v", err)
+	}
+
+	return
+}
+
+func noContent(t *testing.T) {
+	localRepo := setupLocalRepo(t, memfs.New())
+	remoteRepo := setupRemoteRepo(t, localRepo, memory.NewStorage())
+
+	t.Logf("Pushing to remote [%v]\n", remoteRepo.Config().URLs[0])
 	err := localRepo.Push(&go_git.PushOptions{RemoteName: remoteName})
 
 	if err != nil && !errors.Is(err, go_git.NoErrAlreadyUpToDate) {
@@ -81,71 +129,93 @@ func noContent(t *testing.T) {
 }
 
 func withContent(t *testing.T) {
-	localFilesystem := memfs.New()
-
-	file, err := localFilesystem.Create("dummy")
-	if err != nil {
-		t.Fatalf("Could not create local repo file: %v", err)
-	}
-	fileName := file.Name()
-	if _, err = file.Write([]byte("Test content")); err != nil {
-		t.Fatalf("Could not write local repo file: %v", err)
-	}
-	if err = file.Close(); err != nil {
-		t.Fatalf("Could not close local repo file: %v", err)
-	}
-
 	remoteStorage := memory.NewStorage()
+	localFilesystem := populateFilesystem(t)
 
-	remoteURL, localRepo, _ := setup(t, localFilesystem, remoteStorage)
+	localRepo := setupLocalRepo(t, localFilesystem)
+	remoteRepo := setupRemoteRepo(t, localRepo, remoteStorage)
+	remoteURL := remoteRepo.Config().URLs[0]
 
-	wt, err := localRepo.Worktree()
-	if err != nil {
-		t.Fatalf("Could not obtain local worktree: %v", err)
-	}
-	if _, err = wt.Add(fileName); err != nil {
-		t.Fatalf("Could not add [%v]: %v", fileName, err)
-	}
-
-	commit, err := wt.Commit("test commit", &go_git.CommitOptions{
-		Author: &object.Signature{Name: "Test", Email: "test@example.com"},
-	})
-	if err != nil {
-		t.Fatalf("Could not commit worktree: %v", err)
-	}
+	commit := addCommitInRepo(t, localRepo)
 
 	t.Logf("Pushing [%v] to remote [%v]\n", commit, remoteURL)
-	if err = localRepo.Push(&go_git.PushOptions{RemoteName: remoteName}); err != nil {
+	if err := localRepo.Push(&go_git.PushOptions{RemoteName: remoteName}); err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	_, found := remoteStorage.ObjectStorage.Commits[commit]
-	if !found {
+	if _, found := remoteStorage.Commits[commit]; !found {
 		t.Fatalf("Could not get commit [%v] from remote", commit)
 	}
 }
 
-func TestPush(t *testing.T) {
-	t.Setenv(portEnvKey, port)
+func clone(t *testing.T) {
+	remoteStorage := memory.NewStorage()
+	localFilesystem := populateFilesystem(t)
 
+	sourceRepo := setupLocalRepo(t, localFilesystem)
+	remoteRepo := setupRemoteRepo(t, sourceRepo, remoteStorage)
+	remoteURL := remoteRepo.Config().URLs[0]
+
+	commit := addCommitInRepo(t, sourceRepo)
+
+	t.Logf("Pushing [%v] to remote [%v]\n", commit, remoteURL)
+	if err := sourceRepo.Push(&go_git.PushOptions{RemoteName: remoteName}); err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	if _, found := remoteStorage.Commits[commit]; !found {
+		t.Fatalf("Could not get commit [%v] from remote", commit)
+	}
+
+	clonedStorage := memory.NewStorage()
+	clonedWorktree := memfs.New()
+
+	_, err := go_git.Clone(
+		clonedStorage,
+		clonedWorktree,
+		&go_git.CloneOptions{
+			URL:           remoteURL,
+			RemoteName:    remoteName,
+			ReferenceName: defaultBranch,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Could not clone remote [%v]: %v", remoteURL, err)
+	}
+
+	if _, found := clonedStorage.Commits[commit]; !found {
+		t.Fatalf("Could not get commit [%v] from remote", commit)
+	}
+}
+
+func TestHandler(t *testing.T) {
 	var serverErrorChannel chan server.Error
-	remoteAddress, serverErrorChannel = server.Run(ctx, &certs, testMux, portEnvKey)
-	t.Logf("Serving on [%v]\n", remoteAddress)
+	// Handle server startup
+	{
+		t.Setenv(portEnvKey, port)
 
-	t.Run("No Content", noContent)
-	t.Run("With Content", withContent)
+		remoteAddress, serverErrorChannel = server.Run(ctx, &certs, testMux, portEnvKey)
+		t.Logf("Serving on [%v]\n", remoteAddress)
+	}
+
+	t.Run("Push with no content", noContent)
+	t.Run("Push with content", withContent)
+	t.Run("Clone", clone)
 
 	cancelFunction()
 
-	serverError := <-serverErrorChannel
-	contextError := serverError.Context.Error()
-	t.Logf("Server [%v] stopped: %v", remoteAddress, contextError)
+	// Handle server shutdown
+	{
+		serverError := <-serverErrorChannel
+		contextError := serverError.Context.Error()
+		t.Logf("Server [%v] stopped: %v", remoteAddress, contextError)
 
-	if serverError.Close != nil {
-		t.Fatalf("Error closing server: %v", serverError.Close.Error())
-	}
+		if serverError.Close != nil {
+			t.Fatalf("Error closing server: %v", serverError.Close.Error())
+		}
 
-	if contextError != server.ErrContextCancelled.Error() {
-		t.Fatalf("Server failed unexpectedly: %v", contextError)
+		if contextError != server.ErrContextCancelled.Error() {
+			t.Fatalf("Server failed unexpectedly: %v", contextError)
+		}
 	}
 }
