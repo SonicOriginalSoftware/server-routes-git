@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"git.sonicoriginal.software/routes/git.git"
+	git "git.sonicoriginal.software/server-routes-git.git"
 	"git.sonicoriginal.software/server.git/v2"
 
 	"github.com/go-git/go-billy/v5"

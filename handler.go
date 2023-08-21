@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"git.sonicoriginal.software/routes/git.git/internal"
-	"git.sonicoriginal.software/routes/git.git/internal/pack"
+	"git.sonicoriginal.software/server-routes-git.git/internal"
+	"git.sonicoriginal.software/server-routes-git.git/internal/pack"
 
 	"git.sonicoriginal.software/logger.git"
 	"git.sonicoriginal.software/server.git/v2"
